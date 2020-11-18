@@ -11,7 +11,9 @@ use app\models\database\Cottages;
 use app\models\database\DefenceDevice;
 use app\models\database\DefenceStatusChangeRequest;
 use app\models\utils\AlertRawDataHandler;
+use app\models\utils\RawDataHandler;
 use app\models\utils\TimeHandle;
+use Exception;
 use JsonException;
 
 class Api
@@ -205,6 +207,22 @@ class Api
                     $parsedValues .= $num . ' ';
                     $registeredCottage = Cottages::get($num);
                     if ($registeredCottage !== null) {
+                        // проверю заряд батареи и данные считывателя. Если заряд ниже 80%
+                        // или переданные значения меньше старых- оповещу
+                        try{
+                            $oldParsedInfo = new RawDataHandler($registeredCottage->last_raw_data);
+                            $newParsedInfo = new RawDataHandler($registeredCottage->$item['rawData']);
+                            if($newParsedInfo->batteryLevel < 80){
+                                // оповещу
+                                TelegramService::notify("Участок{$registeredCottage->cottage_number}: заряд считывателя:{$newParsedInfo->batteryLevel}%");
+                            }
+                            if($registeredCottage->current_counter_indication > (int)$item['currentData']){
+                                TelegramService::notify("Участок{$registeredCottage->cottage_number}: Предыдущие показания({$registeredCottage->current_counter_indication}) больше новых{$item['currentData']}");
+                            }
+                        }
+                        catch (Exception $e){
+
+                        }
                         $changesCount++;
                         // запишу в карточку участка полученные данные
                         $registeredCottage->current_counter_indication = (int)$item['currentData'];

@@ -6,12 +6,14 @@ use app\assets\IndexAsset;
 use app\models\database\Cottages;
 use app\models\database\DefenceDevice;
 use app\models\utils\GrammarHandler;
+use app\models\utils\RawDataHandler;
 use nirvana\showloading\ShowLoadingAsset;
 
 IndexAsset::register($this);
 ShowLoadingAsset::register($this);
 
 $this->title = 'Теперь это наш сервер :)';
+
 ?>
 <div class="row">
     <?php

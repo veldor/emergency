@@ -4,7 +4,9 @@
 namespace app\models\database;
 
 
+use app\models\exceptions\InvalidParamException;
 use app\models\User;
+use app\models\utils\RawDataHandler;
 use phpDocumentor\Reflection\Types\Null_;
 use Yii;
 use yii\db\ActiveRecord;
@@ -162,6 +164,23 @@ class Cottages extends ActiveRecord
                 return ['status' => 1, 'header' => 'Успешно', 'message' => 'Участок зарегистрирован. Пароль: ' . $password, 'reload' => true];
             }
             return ['status' => 2, 'message' => 'Кажется, этот участок уже зарегистрирован'];
+        }
+    }
+
+    public static function checkLost(){
+        // получу данные обо всех участках
+        $cottagesData = self::find()->all();
+        $cottageInfo = null;
+        if(!empty($cottagesData)){
+            /** @var Cottages $item */
+            foreach ($cottagesData as $item) {
+                try {
+                    $cottageInfo = new RawDataHandler($item->last_raw_data);
+                    // участок должен был выйти на связь не позднее чем за двое суток от текущей даты
+                    $spend = time() - (60*60*48);
+                }
+                catch (InvalidParamException $e) {}
+            }
         }
     }
 

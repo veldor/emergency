@@ -64,6 +64,8 @@ class TelegramService
             self::$bot->command('artifacts', static function ($message) {
                 self::$message = $message;
                 if (Telegram_service_clients::isRegistered(self::$message->getChat()->getId())) {
+                    // проверю, кто из участков долго не выходил на связь
+                    Cottages::checkLost();
                     self::sendMessage("Я работаю над этим");
                 }
             });
@@ -113,5 +115,21 @@ class TelegramService
     private static function sendMessage($messageText): void
     {
         self::$bot->sendMessage(self::$message->getChat()->getId(), $messageText);
+    }
+    private static function sendMessageToReceiver($receiver, $messageText): void
+    {
+        self::$bot->sendMessage($receiver, $messageText);
+    }
+
+    public static function notify(string $message)
+    {
+        $token = Info::TG_SERVICE_BOT_TOKEN;
+        self::$bot = new Client($token);
+        $subscribers = Telegram_service_clients::find()->all();
+        if(!empty($subscribers)){
+            foreach ($subscribers as $item) {
+                self::sendMessageToReceiver($item->client_id, $message);
+            }
+        }
     }
 }
