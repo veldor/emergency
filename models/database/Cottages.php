@@ -8,7 +8,6 @@ use app\models\exceptions\InvalidParamException;
 use app\models\User;
 use app\models\utils\RawDataHandler;
 use app\models\utils\TimeHandle;
-use phpDocumentor\Reflection\Types\Null_;
 use Yii;
 use yii\db\ActiveRecord;
 use yii\db\StaleObjectException;
@@ -104,8 +103,8 @@ class Cottages extends ActiveRecord
                     $answer[] = [$cottage->cottage_number, $cottage->alert_status];
                 }
             }
-            return $answer;
         }
+        return $answer;
     }
 
     /**
@@ -162,13 +161,11 @@ class Cottages extends ActiveRecord
 
     public function register(): ?array
     {
-        if (!empty($this->owner_personals) && !empty($this->cottage_number)) {
-            if (!self::exists($this->cottage_number)) {
-                $newCottage = new self(['owner_personals' => trim($this->owner_personals), 'cottage_number' => trim($this->cottage_number)]);
-                $newCottage->save();
-                $password = User::registerNew($newCottage);
-                return ['status' => 1, 'header' => 'Успешно', 'message' => 'Участок зарегистрирован. Пароль: ' . $password, 'reload' => true];
-            }
+        if (!empty($this->owner_personals) && !empty($this->cottage_number) && !self::exists($this->cottage_number)) {
+            $newCottage = new self(['owner_personals' => trim($this->owner_personals), 'cottage_number' => trim($this->cottage_number)]);
+            $newCottage->save();
+            $password = User::registerNew($newCottage);
+            return ['status' => 1, 'header' => 'Успешно', 'message' => 'Участок зарегистрирован. Пароль: ' . $password, 'reload' => true];
         }
         return ['status' => 2, 'message' => 'Кажется, этот участок уже зарегистрирован'];
     }
@@ -204,6 +201,29 @@ class Cottages extends ActiveRecord
             return $answer;
         }
         return 'Артефактов не найдено, всё в порядке.';
+    }
+
+    /**
+     * @param string $deviceId
+     * @return string|null
+     */
+    public static function getCounterRawData(string $deviceId):?string
+    {
+        /** @var Cottages|null $result */
+        $result = self::find()->where(['reader_id' => $deviceId])->one();
+        if($result !== null){
+            return $result->last_raw_data;
+        }
+        return null;
+    }
+
+    /**
+     * @param string $deviceId
+     * @return Cottages[]
+     */
+    public static function getBoundedCottages(string $deviceId): array
+    {
+        return self::find()->where(['reader_id' => $deviceId])->all();
     }
 
 }

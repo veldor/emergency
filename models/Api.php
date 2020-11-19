@@ -107,6 +107,7 @@ class Api
         }
         $cottageInfo = Cottages::get(self::$user->cottage_number);
         $defenceStatus = 0;
+        $perimeterState = '';
         $alerts = [];
         if ($cottageInfo !== null) {
             if ($cottageInfo->binded_defence_device !== null) {
@@ -120,9 +121,16 @@ class Api
                             $alerts[] = $unhandledAlert->raw_data;
                         }
                     }
+                    $rawData = Cottages::getCounterRawData($defenceDevice->devEui);
+                    try {
+                        $handler = new RawDataHandler($rawData);
+                        $value = "pin_{$defenceDevice->port}_value";
+                        $perimeterState = $handler->$value;
+                    } catch (exceptions\InvalidParamException $e) {
+                    }
                 }
             }
-            return ['status' => 'success', 'owner_io' => $cottageInfo->owner_personals, 'cottage_number' => $cottageInfo->cottage_number, 'current_status' => (bool)$defenceStatus, 'temp' => $cottageInfo->external_temperature, 'last_time' => $cottageInfo->last_indication_time, 'last_data' => $cottageInfo->current_counter_indication, 'alerts' => $alerts, 'raw_data' => $cottageInfo->last_raw_data, 'initial_value' => $cottageInfo->initial_value, 'channel' => $cottageInfo->channel];
+            return ['status' => 'success', 'owner_io' => $cottageInfo->owner_personals, 'cottage_number' => $cottageInfo->cottage_number, 'current_status' => (bool)$defenceStatus, 'temp' => $cottageInfo->external_temperature, 'last_time' => $cottageInfo->last_indication_time, 'last_data' => $cottageInfo->current_counter_indication, 'alerts' => $alerts, 'raw_data' => $cottageInfo->last_raw_data, 'initial_value' => $cottageInfo->initial_value, 'channel' => $cottageInfo->channel, 'perimeter_state' => $perimeterState];
         }
         return ['status' => 'failed', 'message' => 'wrong token'];
     }
@@ -209,9 +217,8 @@ class Api
                         // проверю заряд батареи и данные считывателя. Если заряд ниже 80%
                         // или переданные значения меньше старых- оповещу
                         try {
-                            $oldParsedInfo = new RawDataHandler($registeredCottage->last_raw_data);
                             $newParsedInfo = new RawDataHandler($registeredCottage->$item['rawData']);
-                            if ($newParsedInfo->batteryLevel < 80) {
+                            if (!empty($newParsedInfo->batteryLevel) && $newParsedInfo->batteryLevel < 80) {
                                 // оповещу
                                 TelegramService::notify("Участок{$registeredCottage->cottage_number}: заряд считывателя:{$newParsedInfo->batteryLevel}%");
                             }

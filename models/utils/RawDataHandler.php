@@ -70,7 +70,7 @@ class RawDataHandler
         // а для интерпретации показаний нужно проверить, являются ли контакты импульсными счётчиками
         $byteData = $utils->getByteSettings($rawData);
         $this->activationType = $utils->getActivationType($byteData);
-        $this->indicationTime = $utils->getPingInterval($byteData);
+        $this->pingInterval = $utils->getPingInterval($byteData);
         $this->pin_1_type = $utils->getPinType($byteData, 1);
         $this->pin_2_type = $utils->getPinType($byteData, 2);
         $this->pin_3_type = $utils->getPinType($byteData, 3);
