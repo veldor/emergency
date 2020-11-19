@@ -26,6 +26,7 @@ class SiteController extends Controller
                             'index',
                             'error',
                             'login',
+                            'private-policy',
                         ],
                         'roles' => ['?', '@'],
                     ],
@@ -144,8 +145,8 @@ class SiteController extends Controller
      *
      * @return string
      */
-    public function actionAbout()
+    public function actionPrivatePolicy()
     {
-        return $this->render('about');
+        return $this->renderPartial('about');
     }
 }

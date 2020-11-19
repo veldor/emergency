@@ -37,7 +37,6 @@ class Api
             if ($ipLoginError) {
                 return ['status' => 'failed', 'message' => $ipLoginError];
             }
-
             if (!empty($data['command'])) {
                 switch ($data['command']) {
                     case 'login':
@@ -123,7 +122,7 @@ class Api
                     }
                 }
             }
-            return ['status' => 'success', 'owner_io' => $cottageInfo->owner_personals, 'cottage_number' => $cottageInfo->cottage_number, 'current_status' => (bool)$defenceStatus, 'temp' => $cottageInfo->external_temperature, 'last_time' => $cottageInfo->last_indication_time, 'last_data' => $cottageInfo->current_counter_indication, 'alerts' => $alerts];
+            return ['status' => 'success', 'owner_io' => $cottageInfo->owner_personals, 'cottage_number' => $cottageInfo->cottage_number, 'current_status' => (bool)$defenceStatus, 'temp' => $cottageInfo->external_temperature, 'last_time' => $cottageInfo->last_indication_time, 'last_data' => $cottageInfo->current_counter_indication, 'alerts' => $alerts, 'raw_data' => $cottageInfo->last_raw_data, 'initial_value' => $cottageInfo->initial_value, 'channel' => $cottageInfo->channel];
         }
         return ['status' => 'failed', 'message' => 'wrong token'];
     }
@@ -209,18 +208,17 @@ class Api
                     if ($registeredCottage !== null) {
                         // проверю заряд батареи и данные считывателя. Если заряд ниже 80%
                         // или переданные значения меньше старых- оповещу
-                        try{
+                        try {
                             $oldParsedInfo = new RawDataHandler($registeredCottage->last_raw_data);
                             $newParsedInfo = new RawDataHandler($registeredCottage->$item['rawData']);
-                            if($newParsedInfo->batteryLevel < 80){
+                            if ($newParsedInfo->batteryLevel < 80) {
                                 // оповещу
                                 TelegramService::notify("Участок{$registeredCottage->cottage_number}: заряд считывателя:{$newParsedInfo->batteryLevel}%");
                             }
-                            if($registeredCottage->current_counter_indication > (int)$item['currentData']){
+                            if ($registeredCottage->current_counter_indication > (int)$item['currentData']) {
                                 TelegramService::notify("Участок{$registeredCottage->cottage_number}: Предыдущие показания({$registeredCottage->current_counter_indication}) больше новых{$item['currentData']}");
                             }
-                        }
-                        catch (Exception $e){
+                        } catch (Exception $e) {
 
                         }
                         $changesCount++;
@@ -230,12 +228,24 @@ class Api
                         $registeredCottage->external_temperature = (int)$item['outTemperature'];
                         $registeredCottage->last_raw_data = $item['rawData'];
                         $registeredCottage->data_receive_time = time();
+                        if (!empty($item['beginData'])) {
+                            $registeredCottage->initial_value = $item['beginData'];
+                        }
+                        if (!empty($item['channel'])) {
+                            $registeredCottage->channel = $item['channel'];
+                        }
+                        if (!empty($item['devEui'])) {
+                            $registeredCottage->reader_id = $item['devEui'];
+                        }
                         $parsedValues .= 'handled ';
                         $registeredCottage->save();
                     } else {
                         // Зарегистрирую новый участок
                         $newCottage = new Cottages();
                         $newCottage->cottage_number = $num;
+                        if (!empty($item['initialValue'])) {
+                            $newCottage->initial_value = $item['initialValue'];
+                        }
                         $newCottage->current_counter_indication = (int)$item['currentData'];
                         $newCottage->last_indication_time = (int)$item['indicationDate'];
                         $newCottage->external_temperature = (int)$item['outTemperature'];
@@ -368,7 +378,7 @@ class Api
         }
     }
 
-    private static function alerts_handled($data)
+    private static function alerts_handled($data): array
     {
         $accessControlResult = self::checkAccess($data);
         if (!empty($accessControlResult)) {
@@ -380,7 +390,7 @@ class Api
             $deviceInfo = DefenceDevice::findOne($cottageInfo->binded_defence_device);
             if ($deviceInfo !== null) {
                 if (Alert::setConfirmed($deviceInfo)) {
-                    return ['status' => "waiting", "message" => "wait for confirm"];
+                    return ['status' => "success", "message" => "alerts confirmed"];
                 }
             }
         }
