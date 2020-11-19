@@ -230,9 +230,13 @@ class Api
                         }
                         $changesCount++;
                         // запишу в карточку участка полученные данные
-                        $registeredCottage->current_counter_indication = (int)$item['currentData'];
+                        if (!empty($item['currentData'])) {
+                            $registeredCottage->current_counter_indication = (int)$item['currentData'];
+                        }
                         $registeredCottage->last_indication_time = (int)$item['indicationDate'];
-                        $registeredCottage->external_temperature = (int)$item['outTemperature'];
+                        if (!empty($item['outTemperature'])) {
+                            $registeredCottage->external_temperature = (int)$item['outTemperature'];
+                        }
                         $registeredCottage->last_raw_data = $item['rawData'];
                         $registeredCottage->data_receive_time = time();
                         if (!empty($item['beginData'])) {
