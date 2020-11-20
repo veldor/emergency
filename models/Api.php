@@ -130,7 +130,7 @@ class Api
                     }
                 }
             }
-            return ['status' => 'success', 'owner_io' => $cottageInfo->owner_personals, 'cottage_number' => $cottageInfo->cottage_number, 'current_status' => (bool)$defenceStatus, 'temp' => $cottageInfo->external_temperature, 'last_time' => $cottageInfo->last_indication_time, 'last_data' => $cottageInfo->current_counter_indication, 'alerts' => $alerts, 'raw_data' => $cottageInfo->last_raw_data, 'initial_value' => $cottageInfo->initial_value, 'channel' => $cottageInfo->channel, 'perimeter_state' => $perimeterState];
+            return ['status' => 'success', 'owner_io' => $cottageInfo->owner_personals, 'cottage_number' => $cottageInfo->cottage_number, 'current_status' => (bool)$defenceStatus, 'temp' => $cottageInfo->external_temperature, 'last_time' => $cottageInfo->last_indication_time, 'connection_time' => $cottageInfo->data_receive_time, 'last_data' => $cottageInfo->current_counter_indication, 'alerts' => $alerts, 'raw_data' => $cottageInfo->last_raw_data, 'initial_value' => $cottageInfo->initial_value, 'channel' => $cottageInfo->channel, 'perimeter_state' => $perimeterState];
         }
         return ['status' => 'failed', 'message' => 'wrong token'];
     }
