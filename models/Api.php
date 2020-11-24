@@ -11,6 +11,7 @@ use app\models\database\Cottages;
 use app\models\database\DefenceDevice;
 use app\models\database\DefenceStatusChangeRequest;
 use app\models\utils\AlertRawDataHandler;
+use app\models\utils\PingChecker;
 use app\models\utils\RawDataHandler;
 use app\models\utils\TimeHandle;
 use Exception;
@@ -100,11 +101,12 @@ class Api
 
     private static function get_current_status($data): array
     {
-
         $accessControlResult = self::checkAccess($data);
         if (!empty($accessControlResult)) {
             return $accessControlResult;
         }
+        // проверю, если сервер долго не выходил на связь- оповещу об этом
+        (new PingChecker())->checkServerPing();
         $cottageInfo = Cottages::get(self::$user->cottage_number);
         $defenceStatus = 0;
         $perimeterState = '';
@@ -168,6 +170,8 @@ class Api
         if (!empty($accessControlResult)) {
             return $accessControlResult;
         }
+        // Запишу время последнего доступа к информации
+        (new PingChecker())->setPing();
         $waitingDevices = [];
         $waitingDefenceChangeRequests = DefenceStatusChangeRequest::getWaitingForConfirm();
         if ($waitingDefenceChangeRequests !== null) {

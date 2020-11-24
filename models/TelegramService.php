@@ -7,7 +7,9 @@ namespace app\models;
 use app\models\database\Cottages;
 use app\models\database\Telegram_service_clients;
 use app\models\utils\GrammarHandler;
+use app\models\utils\PingChecker;
 use app\models\utils\RawDataHandler;
+use app\models\utils\TimeHandle;
 use app\priv\Info;
 use Exception;
 use TelegramBot\Api\Client;
@@ -44,6 +46,7 @@ class TelegramService
                     if (Telegram_service_clients::isRegistered(self::$message->getChat()->getId())) {
                         $answer = 'Команды:
 /help - вывод справки
+/ping - последний выход сервера на связь
 /artifacts - проверить наличие аномалий счётчиков';
                     } else {
                         $answer = 'Команды:
@@ -63,6 +66,12 @@ class TelegramService
                     $answer = Cottages::checkLost();
                     self::sendMessage($answer);
                 }
+            });
+// команда проверки выхода сервера на связь
+            self::$bot->command('ping', static function ($message) {
+                self::$message = $message;
+                $ping = (new PingChecker())->getPing();
+                self::sendMessage(TimeHandle::timestampToDate($ping));
             });
 
 
