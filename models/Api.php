@@ -10,6 +10,7 @@ use app\models\database\Blacklist_ips;
 use app\models\database\Cottages;
 use app\models\database\DefenceDevice;
 use app\models\database\DefenceStatusChangeRequest;
+use app\models\database\FirebaseDeviceBinding;
 use app\models\utils\AlertRawDataHandler;
 use app\models\utils\PingChecker;
 use app\models\utils\RawDataHandler;
@@ -42,6 +43,8 @@ class Api
                 switch ($data['command']) {
                     case 'login':
                         return self::login($data);
+                    case 'logout':
+                        return self::logout($data);
                     case 'get_current_status':
                         return self::get_current_status($data);
                     case 'change_alert_mode':
@@ -58,6 +61,10 @@ class Api
                         return self::check_alert_mode_changed($data);
                     case 'alerts_handled':
                         return self::alerts_handled($data);
+                    case 'tokens_confirm':
+                        return self::tokens_confirm($data);
+                    case 'power_state_changed':
+                        return self::change_power_state_handled($data);
                 }
             }
         } catch (JsonException $e) {
@@ -75,8 +82,12 @@ class Api
     {
         $login = $data['login'];
         $password = $data['password'];
+        $token = $data['token'];
         if (empty($login) || empty($password)) {
             return ['status' => 'failed', 'message' => 'empty login or password'];
+        }
+        if(empty($token)){
+            return ['status' => 'failed', 'message' => 'now require firebase token'];
         }
         $user = User::findByUsername($login);
         if ($user !== null) {
@@ -92,21 +103,33 @@ class Api
             // всё верно, верну токен идентификации
             Blacklist_cottages::clearTry($login);
             Blacklist_ips::clearTry();
+            // зарегистрирую логин
+            FirebaseDeviceBinding::registerLogin($token, $user->cottage_number);
             return ['status' => 'success', 'token' => $user->getAuthKey()];
         }
         Blacklist_cottages::registerWrongTry($login);
         Blacklist_ips::registerWrongTry();
         return ['status' => 'failed', 'message' => 'invalid login or password'];
     }
-
-    private static function get_current_status($data): array
+    private static function logout($data): array
     {
         $accessControlResult = self::checkAccess($data);
         if (!empty($accessControlResult)) {
             return $accessControlResult;
         }
-        // проверю, если сервер долго не выходил на связь- оповещу об этом
-        (new PingChecker())->checkServerPing();
+        $token = $data['firebase_token'];
+        // зарегистрирую попытку выхода
+        FirebaseDeviceBinding::registerLogout($token, self::$user->cottage_number);
+        return ['status' => 'success'];
+    }
+
+    private static function get_current_status($data): array
+    {
+
+        $accessControlResult = self::checkAccess($data);
+        if (!empty($accessControlResult)) {
+            return $accessControlResult;
+        }
         $cottageInfo = Cottages::get(self::$user->cottage_number);
         $defenceStatus = 0;
         $perimeterState = '';
@@ -166,12 +189,11 @@ class Api
 
     private static function request_data($data): array
     {
+        (new PingChecker())->setPing();
         $accessControlResult = self::checkAccess($data);
         if (!empty($accessControlResult)) {
             return $accessControlResult;
         }
-        // Запишу время последнего доступа к информации
-        (new PingChecker())->setPing();
         $waitingDevices = [];
         $waitingDefenceChangeRequests = DefenceStatusChangeRequest::getWaitingForConfirm();
         if ($waitingDefenceChangeRequests !== null) {
@@ -197,7 +219,18 @@ class Api
                 $handledAlerts[] = $rawData;
             }
         }
-        return ['status' => 'success', 'defence_state_changes' => $waitingDevices, 'handled_alerts' => $handledAlerts];
+        $waitingTokens = FirebaseDeviceBinding::getWaiting();
+        $waiting = [];
+        if(!empty($waitingTokens)){
+            foreach ($waitingTokens as $waitingToken) {
+                $waiting[] = ['token' => $waitingToken->token,
+                    'cottage_number' => $waitingToken->cottage_number,
+                    'wait_in' => $waitingToken->wait_in,
+                    'wait_out' => $waitingToken->wait_out,
+                ];
+            }
+        }
+        return ['status' => 'success', 'defence_state_changes' => $waitingDevices, 'handled_alerts' => $handledAlerts, 'tokens' => $waiting];
     }
 
     private static function inject_data($data): array
@@ -403,12 +436,38 @@ class Api
         if ($cottageInfo !== null && $cottageInfo->binded_defence_device !== null) {
             // проверю наличие незавершённых запросов
             $deviceInfo = DefenceDevice::findOne($cottageInfo->binded_defence_device);
-            if ($deviceInfo !== null) {
-                if (Alert::setConfirmed($deviceInfo)) {
-                    return ['status' => "success", "message" => "alerts confirmed"];
-                }
+            if (($deviceInfo !== null) && Alert::setConfirmed($deviceInfo)) {
+                return ['status' => "success", "message" => "alerts confirmed"];
             }
         }
         return ['status' => "failed", "message" => "something wrong"];
+    }
+
+    private static function change_power_state_handled($data): array
+    {
+        $accessControlResult = self::checkAccess($data);
+        if (!empty($accessControlResult)) {
+            return $accessControlResult;
+        }
+        $devEui = $data['devEui'];
+        $state = $data['state'];
+        Cottages::setPowerState($devEui, $state);
+        TelegramService::notify("Сменился тип питания на считывателе /d_{$devEui} : " . $state ? "питание подключено" : "питание отключено");
+        return ['status' => "success", "message" => "confirmed"];
+    }
+
+    private static function tokens_confirm($data): array
+    {
+        $accessControlResult = self::checkAccess($data);
+        if (!empty($accessControlResult)) {
+            return $accessControlResult;
+        }
+        $tokens = $data['accepted_tokens'];
+        if(!empty($tokens)){
+            foreach ($tokens as $token) {
+                FirebaseDeviceBinding::setTokenHandled($token);
+            }
+        }
+        return ['status' => "success", "message" => "confirmed"];
     }
 }

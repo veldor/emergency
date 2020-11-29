@@ -26,6 +26,7 @@ use yii\db\StaleObjectException;
  * @property bool $subscribe_broadcast [tinyint(1)]  Подписка на все события
  * @property string $initial_value [varchar(10)]  Начальные показания
  * @property int $channel [smallint(1) unsigned]  Канал считывателя
+ * @property int $reader_power_state [smallint(1) unsigned]  Канал считывателя
  * @property string $reader_id varchar(16)]  Идентификатор считывателя
  */
 class Cottages extends ActiveRecord
@@ -114,6 +115,22 @@ class Cottages extends ActiveRecord
     public static function getSubscribers(DefenceDevice $defenceDevice):array
     {
         return self::find()->where(['binded_defence_device' => $defenceDevice->id])->orWhere(['subscribe_broadcast' => 1])->all();
+    }
+
+    /**
+     * @param $devEui
+     * @param $state
+     */
+    public static function setPowerState($devEui, $state): void
+    {
+        /** @var Cottages[] $cottages */
+        $cottages = self::find()->where(['reader_id' => $devEui])->all();
+        if(!empty($cottages)){
+            foreach ($cottages as $cottage) {
+                $cottage->reader_power_state = $state;
+                $cottage->save();
+            }
+        }
     }
 
     /**
@@ -224,6 +241,15 @@ class Cottages extends ActiveRecord
     public static function getBoundedCottages(string $deviceId): array
     {
         return self::find()->where(['reader_id' => $deviceId])->all();
+    }
+
+    public static function getCounterPowerState(string $deviceId): string
+    {
+        /** @var Cottages $result */
+        $result = self::find()->where(['reader_id' => $deviceId])->one();
+        if($result !== null){
+            return $result->reader_power_state ? 'внешнее питание' : 'от батареи';
+        }
     }
 
 }
