@@ -147,6 +147,9 @@ class TelegramService
                         }
                         $valueName = 'pin_' . $cottageInfo->channel . '_value';
                         $counted = $dataInfo->$valueName;
+                        if($cottageInfo->reader_id === '3632333364377D19'){
+                            $counted *= 4;
+                        }
                         $startValue = (float)$cottageInfo->initial_value;
                         $total = round($counted + $startValue , 3);
                         return "

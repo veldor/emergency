@@ -67,7 +67,8 @@ class ManagementActionsController extends Controller
     /**
      * @return array
      */
-    public function actionRegisterCottage(){
+    public function actionRegisterCottage(): array
+    {
         Yii::$app->response->format = Response::FORMAT_JSON;
         $model = new Cottages();
         $model->load(Yii::$app->request->post());

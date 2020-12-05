@@ -22,11 +22,6 @@ $this->title = 'Теперь это наш сервер :)';
     <?php
     if(Yii::$app->user->isGuest){
     ?>
-    <div class="col-xs-12 text-center">
-        <a href="/login" class="btn btn-default">
-            <span class="text-success">У меня тут участок</span>
-        </a>
-    </div>
     <?php
         }
     else{

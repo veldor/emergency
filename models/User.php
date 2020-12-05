@@ -106,6 +106,14 @@ class User extends ActiveRecord implements IdentityInterface
         return false;
     }
 
+    /**
+     * @return User[]
+     */
+    public static function getAll(): array
+    {
+        return self::find()->all();
+    }
+
 
     public function validatePassword($password): bool
     {

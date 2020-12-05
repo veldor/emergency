@@ -14,7 +14,7 @@ $urlRules = require __DIR__ . '/rules.php';
 
 $config = [
     'id' => 'cottage',
-    'name' => 'СНТ "Облепиха"',
+    'name' => 'Мы',
     'basePath' => dirname(__DIR__),
     'layout' => 'main',
     'language' => 'ru-RU',
