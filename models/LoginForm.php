@@ -40,7 +40,7 @@ class LoginForm extends Model
     public function attributeLabels():array
     {
         return [
-            'username' => 'Номер участка',
+            'username' => 'Логин',
             'password' => 'Пароль',
             'rememberMe' => 'Запомнить меня',
         ];

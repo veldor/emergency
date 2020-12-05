@@ -112,7 +112,7 @@ class Cottages extends ActiveRecord
      * @param DefenceDevice $defenceDevice
      * @return Cottages[]
      */
-    public static function getSubscribers(DefenceDevice $defenceDevice):array
+    public static function getSubscribers(DefenceDevice $defenceDevice): array
     {
         return self::find()->where(['binded_defence_device' => $defenceDevice->id])->orWhere(['subscribe_broadcast' => 1])->all();
     }
@@ -125,7 +125,7 @@ class Cottages extends ActiveRecord
     {
         /** @var Cottages[] $cottages */
         $cottages = self::find()->where(['reader_id' => $devEui])->all();
-        if(!empty($cottages)){
+        if (!empty($cottages)) {
             foreach ($cottages as $cottage) {
                 $cottage->reader_power_state = $state;
                 $cottage->save();
@@ -178,39 +178,45 @@ class Cottages extends ActiveRecord
 
     public function register(): ?array
     {
-        if (!empty($this->owner_personals) && !empty($this->cottage_number) && !self::exists($this->cottage_number)) {
-            $newCottage = new self(['owner_personals' => trim($this->owner_personals), 'cottage_number' => trim($this->cottage_number)]);
-            $newCottage->save();
-            $password = User::registerNew($newCottage);
+        $existentCottage = self::get($this->cottage_number);
+        if ($existentCottage === null) {
+            $existentCottage = new self(['owner_personals' => trim($this->owner_personals), 'cottage_number' => trim($this->cottage_number)]);
+        }
+        $existentCottage->owner_personals = $this->owner_personals;
+        $existentCottage->save();
+        $existentUser = User::findByUsername($this->cottage_number);
+        if ($existentUser === null) {
+            $password = User::registerNew($existentCottage);
             return ['status' => 1, 'header' => 'Успешно', 'message' => 'Участок зарегистрирован. Пароль: ' . $password, 'reload' => true];
+
         }
         return ['status' => 2, 'message' => 'Кажется, этот участок уже зарегистрирован'];
     }
 
-    public static function checkLost(){
+    public static function checkLost()
+    {
         // получу данные обо всех участках
         /** @var Cottages[] $cottagesData */
         $cottagesData = self::find()->all();
         $cottageInfo = null;
         $errors = [];
-        if(!empty($cottagesData)){
+        if (!empty($cottagesData)) {
             foreach ($cottagesData as $item) {
                 try {
                     $cottageInfo = new RawDataHandler($item->last_raw_data);
                     // участок должен был выйти на связь не позднее чем за двое суток от текущей даты
                     $spend = time() - self::SPEND;
-                    if($item->data_receive_time < $spend){
+                    if ($item->data_receive_time < $spend) {
                         $errors[] = "Считыватель участка {$item->cottage_number} не выходил на связь с " . TimeHandle::timestampToDate($item->data_receive_time) . "\n";
                     }
-                    if($cottageInfo->batteryLevel < 80){
+                    if ($cottageInfo->batteryLevel < 80) {
                         $errors[] = "Считыватель участка {$item->cottage_number}: заряд батареи {$cottageInfo->batteryLevel}%\n";
                     }
-                }
-                catch (InvalidParamException $e) {
+                } catch (InvalidParamException $e) {
                 }
             }
         }
-        if(!empty($errors)){
+        if (!empty($errors)) {
             $answer = '';
             foreach ($errors as $error) {
                 $answer .= $error;
@@ -224,11 +230,11 @@ class Cottages extends ActiveRecord
      * @param string $deviceId
      * @return string|null
      */
-    public static function getCounterRawData(string $deviceId):?string
+    public static function getCounterRawData(string $deviceId): ?string
     {
         /** @var Cottages|null $result */
         $result = self::find()->where(['reader_id' => $deviceId])->one();
-        if($result !== null){
+        if ($result !== null) {
             return $result->last_raw_data;
         }
         return null;
@@ -247,7 +253,7 @@ class Cottages extends ActiveRecord
     {
         /** @var Cottages $result */
         $result = self::find()->where(['reader_id' => $deviceId])->one();
-        if($result !== null){
+        if ($result !== null) {
             return $result->reader_power_state ? 'внешнее питание' : 'от батареи';
         }
     }
