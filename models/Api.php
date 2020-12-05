@@ -31,6 +31,7 @@ class Api
      */
     public static function handleRequest(): array
     {
+        (new PingChecker())->checkServerPing();
         $text = file_get_contents('php://input');
         try {
             $data = json_decode($text, true, 512, JSON_THROW_ON_ERROR);
@@ -86,7 +87,7 @@ class Api
         if (empty($login) || empty($password)) {
             return ['status' => 'failed', 'message' => 'empty login or password'];
         }
-        if(empty($token)){
+        if (empty($token)) {
             return ['status' => 'failed', 'message' => 'now require firebase token'];
         }
         $user = User::findByUsername($login);
@@ -111,6 +112,7 @@ class Api
         Blacklist_ips::registerWrongTry();
         return ['status' => 'failed', 'message' => 'invalid login or password'];
     }
+
     private static function logout($data): array
     {
         $accessControlResult = self::checkAccess($data);
@@ -221,7 +223,7 @@ class Api
         }
         $waitingTokens = FirebaseDeviceBinding::getWaiting();
         $waiting = [];
-        if(!empty($waitingTokens)){
+        if (!empty($waitingTokens)) {
             foreach ($waitingTokens as $waitingToken) {
                 $waiting[] = ['token' => $waitingToken->token,
                     'cottage_number' => $waitingToken->cottage_number,
@@ -253,17 +255,21 @@ class Api
                     if ($registeredCottage !== null) {
                         // проверю заряд батареи и данные считывателя. Если заряд ниже 80%
                         // или переданные значения меньше старых- оповещу
+                        if (!empty($newParsedInfo->batteryLevel) && $newParsedInfo->batteryLevel < 80) {
+                            // оповещу
+                            TelegramService::notify("Участок{$registeredCottage->cottage_number}: заряд считывателя:{$newParsedInfo->batteryLevel}%");
+                        }
+                        if ($registeredCottage->current_counter_indication > (int)$item['currentData']) {
+                            TelegramService::notify("Участок{$registeredCottage->cottage_number}: Предыдущие показания({$registeredCottage->current_counter_indication}) больше новых{$item['currentData']}");
+                        }
                         try {
-                            $newParsedInfo = new RawDataHandler($registeredCottage->$item['rawData']);
-                            if (!empty($newParsedInfo->batteryLevel) && $newParsedInfo->batteryLevel < 80) {
-                                // оповещу
-                                TelegramService::notify("Участок{$registeredCottage->cottage_number}: заряд считывателя:{$newParsedInfo->batteryLevel}%");
-                            }
-                            if ($registeredCottage->current_counter_indication > (int)$item['currentData']) {
-                                TelegramService::notify("Участок{$registeredCottage->cottage_number}: Предыдущие показания({$registeredCottage->current_counter_indication}) больше новых{$item['currentData']}");
+                            $newParsedInfo = new RawDataHandler($item['rawData']);
+//                            TelegramService::notify("Участок {$registeredCottage->cottage_number} получены новые данные. Предыдущие показания {$registeredCottage->current_counter_indication} новые {$item['currentData']} собраны в " . TimeHandle::timestampToDate($newParsedInfo->indicationTime));
+                            if ($registeredCottage->last_indication_time > $newParsedInfo->indicationTime) {
+                                TelegramService::notify("Участок {$registeredCottage->cottage_number}: Время последних передачи последних показаний(" . TimeHandle::timestampToDate($newParsedInfo->indicationTime) . ") меньше предыдущего: " . $registeredCottage->last_indication_time);
                             }
                         } catch (Exception $e) {
-
+                            TelegramService::notify("Ошибка в обработке " . $e->getMessage() . ' ' . $item['rawData']);
                         }
                         $changesCount++;
                         // запишу в карточку участка полученные данные
@@ -301,6 +307,7 @@ class Api
                         $newCottage->data_receive_time = time();
                         $newCottage->save();
                     }
+                    (new PingChecker())->setLastReceivedData();
                 }
             }
         }
@@ -463,7 +470,7 @@ class Api
             return $accessControlResult;
         }
         $tokens = $data['accepted_tokens'];
-        if(!empty($tokens)){
+        if (!empty($tokens)) {
             foreach ($tokens as $token) {
                 FirebaseDeviceBinding::setTokenHandled($token);
             }

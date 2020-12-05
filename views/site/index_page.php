@@ -12,6 +12,9 @@ use nirvana\showloading\ShowLoadingAsset;
 IndexAsset::register($this);
 ShowLoadingAsset::register($this);
 
+echo Cottages::getCountersInfo();
+die;
+
 $this->title = 'Теперь это наш сервер :)';
 
 ?>

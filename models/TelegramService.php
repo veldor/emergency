@@ -16,6 +16,7 @@ use TelegramBot\Api\Client;
 use TelegramBot\Api\InvalidJsonException;
 use TelegramBot\Api\Types\Message;
 use TelegramBot\Api\Types\Update;
+use Yii;
 
 class TelegramService
 {
@@ -47,6 +48,8 @@ class TelegramService
                         $answer = 'Команды:
 /help - вывод справки
 /ping - последний выход сервера на связь
+/last_reports - вывод списка всех считывателей с данными о выходе на связь
+/last_filling - вывод списка всех считывателей с данными о времени последнего сбора данных
 /artifacts - проверить наличие аномалий счётчиков';
                     } else {
                         $answer = 'Команды:
@@ -70,8 +73,18 @@ class TelegramService
 // команда проверки выхода сервера на связь
             self::$bot->command('ping', static function ($message) {
                 self::$message = $message;
-                $ping = (new PingChecker())->getPing();
-                self::sendMessage(TimeHandle::timestampToDate($ping));
+                self::sendMessage("Сервер выходил на связь " . TimeHandle::timestampToDate((new PingChecker())->getPing()));
+                self::sendMessage("Сервер последний раз передал данные " .  TimeHandle::timestampToDate((new PingChecker())->getLastReceivedDataTime()));
+            });
+// команда проверки выхода сервера на связь
+            self::$bot->command('last_reports', static function ($message) {
+                self::$message = $message;
+                self::sendMessage(Cottages::getCountersInfo());
+            });
+// команда проверки выхода сервера на связь
+            self::$bot->command('last_filling', static function ($message) {
+                self::$message = $message;
+                self::sendMessage(Cottages::getCountersInfoFilling());
             });
 
 
