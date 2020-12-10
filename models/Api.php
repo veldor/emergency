@@ -274,12 +274,19 @@ class Api
                         }
                         if ($registeredCottage->current_counter_indication > (int)$item['currentData']) {
                             TelegramService::notify("Участок{$registeredCottage->cottage_number}: Предыдущие показания({$registeredCottage->current_counter_indication}) больше новых{$item['currentData']}");
+                            return ['status' => 'success'];
                         }
                         try {
                             $newParsedInfo = new RawDataHandler($item['rawData']);
 //                            TelegramService::notify("Участок {$registeredCottage->cottage_number} получены новые данные. Предыдущие показания {$registeredCottage->current_counter_indication} новые {$item['currentData']} собраны в " . TimeHandle::timestampToDate($newParsedInfo->indicationTime));
                             if ($registeredCottage->last_indication_time > $newParsedInfo->indicationTime) {
-                                TelegramService::notify("Участок {$registeredCottage->cottage_number}: Время последних передачи последних показаний(" . TimeHandle::timestampToDate($newParsedInfo->indicationTime) . ") меньше предыдущего: " . $registeredCottage->last_indication_time);
+                                TelegramService::notify("Участок /c_{$registeredCottage->cottage_number}: Время последних передачи последних показаний(" . TimeHandle::timestampToDate($newParsedInfo->indicationTime) . ") меньше предыдущего: " . $registeredCottage->last_indication_time);
+                                return ['status' => 'success'];
+                            }
+                            $spend = time() - Cottages::SPEND;
+                            if($registeredCottage->data_receive_time < $spend){
+                                TelegramService::notify("Участок /c_{$registeredCottage->cottage_number} (/d_{$registeredCottage->reader_id}) снова в сети(до этого был " . TimeHandle::timestampToDate($registeredCottage->data_receive_time) . ")");
+
                             }
                         } catch (Exception $e) {
                             TelegramService::notify("Ошибка в обработке " . $e->getMessage() . ' ' . $item['rawData']);

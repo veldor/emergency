@@ -31,7 +31,7 @@ use yii\db\StaleObjectException;
  */
 class Cottages extends ActiveRecord
 {
-    const SPEND = 172800;
+    public const SPEND = 172800;
 
     /**
      * @param $id
@@ -207,10 +207,10 @@ class Cottages extends ActiveRecord
                     // участок должен был выйти на связь не позднее чем за двое суток от текущей даты
                     $spend = time() - self::SPEND;
                     if ($item->data_receive_time < $spend) {
-                        $errors[] = "Считыватель участка {$item->cottage_number} не выходил на связь с " . TimeHandle::timestampToDate($item->data_receive_time) . "\n";
+                        $errors[] = "Считыватель участка /c_{$item->cottage_number} (/d_{$item->reader_id}) не выходил на связь с " . TimeHandle::timestampToDate($item->data_receive_time) . "\n";
                     }
                     if ($cottageInfo->batteryLevel < 80) {
-                        $errors[] = "Считыватель участка {$item->cottage_number}: заряд батареи {$cottageInfo->batteryLevel}%\n";
+                        $errors[] = "Считыватель участка /c_{$item->cottage_number} (/d_{$item->reader_id}): заряд батареи {$cottageInfo->batteryLevel}%\n";
                     }
                 } catch (InvalidParamException $e) {
                 }
