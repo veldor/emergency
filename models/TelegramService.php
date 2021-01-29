@@ -5,6 +5,7 @@ namespace app\models;
 
 
 use app\models\database\Cottages;
+use app\models\database\ReceivedData;
 use app\models\database\Telegram_service_clients;
 use app\models\utils\GrammarHandler;
 use app\models\utils\PingChecker;
@@ -74,7 +75,7 @@ class TelegramService
             self::$bot->command('ping', static function ($message) {
                 self::$message = $message;
                 self::sendMessage("Сервер выходил на связь " . TimeHandle::timestampToDate((new PingChecker())->getPing()));
-                self::sendMessage("Сервер последний раз передал данные " .  TimeHandle::timestampToDate((new PingChecker())->getLastReceivedDataTime()));
+                self::sendMessage("Сервер последний раз передал данные " . TimeHandle::timestampToDate((new PingChecker())->getLastReceivedDataTime()));
             });
 // команда проверки выхода сервера на связь
             self::$bot->command('last_reports', static function ($message) {
@@ -121,8 +122,8 @@ class TelegramService
         $isRegistered = Telegram_service_clients::isRegistered(self::$message->getChat()->getId());
         if ($msg_text === Info::TG_SERVICE_BOT_SECRET) {
             // зарегистрирую данного пользователя
-            if(!$isRegistered){
-                (new Telegram_service_clients(['client_id' =>self::$message->getChat()->getId() ]))->save();
+            if (!$isRegistered) {
+                (new Telegram_service_clients(['client_id' => self::$message->getChat()->getId()]))->save();
                 return "Окей, теперь по команде /help доступен расширенный список команд";
             }
             return "Можно больше не вводить, ты уже зарегистрирован. По команде /help доступен расширенный список команд";
@@ -130,29 +131,28 @@ class TelegramService
 
         if ($isRegistered && (GrammarHandler::startsWith($msg_text, "current") || GrammarHandler::startsWith($msg_text, "/c_"))) {
             $valuesArr = explode(" ", $msg_text);
-            if(!empty($valuesArr) && count($valuesArr) === 2){
-                $cottageNumber =  $valuesArr[1];
-            }
-            else{
+            if (!empty($valuesArr) && count($valuesArr) === 2) {
+                $cottageNumber = $valuesArr[1];
+            } else {
                 $cottageNumber = substr($msg_text, 3);
             }
-                if(!empty($cottageNumber)){
-                    /** @var Cottages $cottageInfo */
-                    $cottageInfo = Cottages::findOne(['cottage_number' => $cottageNumber]);
-                    if($cottageInfo !== null){
-                        try {
-                            $dataInfo = new RawDataHandler($cottageInfo->last_raw_data);
-                        } catch (exceptions\InvalidParamException $e) {
-                            return "error handle raw params " . $e->getMessage();
-                        }
-                        $valueName = 'pin_' . $cottageInfo->channel . '_value';
-                        $counted = $dataInfo->$valueName;
-                        if($cottageInfo->reader_id === '3632333364377D19'){
-                            $counted *= 4;
-                        }
-                        $startValue = (float)$cottageInfo->initial_value;
-                        $total = round($counted + $startValue , 3);
-                        return "
+            if (!empty($cottageNumber)) {
+                /** @var Cottages $cottageInfo */
+                $cottageInfo = Cottages::findOne(['cottage_number' => $cottageNumber]);
+                if ($cottageInfo !== null) {
+                    try {
+                        $dataInfo = new RawDataHandler($cottageInfo->last_raw_data);
+                    } catch (exceptions\InvalidParamException $e) {
+                        return "error handle raw params " . $e->getMessage();
+                    }
+                    $valueName = 'pin_' . $cottageInfo->channel . '_value';
+                    $counted = $dataInfo->$valueName;
+                    if ($cottageInfo->reader_id === '3632333364377D19') {
+                        $counted *= 4;
+                    }
+                    $startValue = (float)$cottageInfo->initial_value;
+                    $total = round($counted + $startValue, 3);
+                    return "
 Участок: $cottageNumber
 Начальное значение: $startValue Квт*ч
 Считыватель насчитал: {$counted} Квт*ч
@@ -165,72 +165,130 @@ DevEui считывателя: {$cottageInfo->reader_id}
 Канал: {$cottageInfo->channel}
 /d_{$cottageInfo->reader_id}
 /c_{$cottageNumber}";
-                    }
                 }
-                else{
-                    return "Не смог определить номер участка. Команда-\"current {номер участка}\"";
-                }
-        } elseif(GrammarHandler::startsWith($msg_text, "/d_") && $isRegistered){
+            } else {
+                return "Не смог определить номер участка. Команда-\"current {номер участка}\"";
+            }
+        } elseif (GrammarHandler::startsWith($msg_text, "/d_") && $isRegistered) {
             $deviceId = substr($msg_text, 3);
             $counterRawData = Cottages::getCounterRawData($deviceId);
-            if(empty($counterRawData)){
+            if (empty($counterRawData)) {
                 return "Данные об устройстве пока недоступны " . $deviceId;
             }
             try {
                 $handler = new RawDataHandler($counterRawData);
                 $answer = '';
-                $answer.= "Считыватель " . $deviceId . "\n";
-                if(!empty($handler->batteryLevel)){
+                $answer .= "Считыватель " . $deviceId . "\n";
+                if (!empty($handler->batteryLevel)) {
                     $answer .= "Уровень заряда батареи: {$handler->batteryLevel}%\n";
                 }
-                if(!empty($handler->activationType)){
+                if (!empty($handler->activationType)) {
                     $answer .= "Тип активации: {$handler->activationType}\n";
                 }
-                if(!empty($handler->pingInterval)){
+                if (!empty($handler->pingInterval)) {
                     $answer .= "Таймаут опроса: {$handler->pingInterval}\n";
                 }
-                if(!empty($handler->externalTemperature)){
+                if (!empty($handler->externalTemperature)) {
                     $answer .= "Внешняя температура: {$handler->externalTemperature}\n";
                 }
-                if(!empty($handler->indicationTime)){
+                if (!empty($handler->indicationTime)) {
                     $answer .= "Данные собраны: " . GrammarHandler::timestampToDate($handler->indicationTime) . "\n";
                 }
-                if(!empty($handler->pin_1_type)){
+                if (!empty($handler->pin_1_type)) {
                     $answer .= "Тип входа 1: {$handler->pin_1_type}\n";
                 }
-                if(!empty($handler->pin_1_value)){
+                if (!empty($handler->pin_1_value)) {
                     $answer .= "Показания входа 1: {$handler->pin_1_value}\n";
                 }
-                if(!empty($handler->pin_2_type)){
+                if (!empty($handler->pin_2_type)) {
                     $answer .= "Тип входа 2: {$handler->pin_2_type}\n";
                 }
-                if(!empty($handler->pin_2_value)){
+                if (!empty($handler->pin_2_value)) {
                     $answer .= "Показания входа 2: {$handler->pin_2_value}\n";
                 }
-                if(!empty($handler->pin_3_type)){
+                if (!empty($handler->pin_3_type)) {
                     $answer .= "Тип входа 3: {$handler->pin_3_type}\n";
                 }
-                if(!empty($handler->pin_3_value)){
+                if (!empty($handler->pin_3_value)) {
                     $answer .= "Показания входа 3: {$handler->pin_3_value}\n";
                 }
-                if(!empty($handler->pin_4_type)){
+                if (!empty($handler->pin_4_type)) {
                     $answer .= "Тип входа 4: {$handler->pin_4_type}\n";
                 }
-                if(!empty($handler->pin_4_value)){
+                if (!empty($handler->pin_4_value)) {
                     $answer .= "Показания входа 4: {$handler->pin_4_value}\n";
                 }
                 // получу номера участков, привязанные к считывателю
                 $boundedCottages = Cottages::getBoundedCottages($deviceId);
-                if(!empty($boundedCottages)){
+                if (!empty($boundedCottages)) {
                     $answer .= "Участки на устройстве:\n";
                     foreach ($boundedCottages as $boundedCottage) {
                         $answer .= "/c_{$boundedCottage->cottage_number}\n";
                     }
                 }
+                $answer .= "Последние переданные данные:\n /s_" . $deviceId;
                 return $answer;
             } catch (exceptions\InvalidParamException $e) {
                 return "не смог обработать данные считывателя";
             }
+        } elseif (GrammarHandler::startsWith($msg_text, "/s_") && $isRegistered) {
+            $message = '';
+            $deviceId = substr($msg_text, 3);
+            $lastData = ReceivedData::getLastData($deviceId);
+            if(!empty($lastData)){
+                foreach ($lastData as $data) {
+                    $message .= '/e_' . $data->raw_data . "\n";
+                }
+            }
+            if(!empty($message)){
+                return $message;
+            }
+            return 'Данные пока не поступали';
+        } elseif (GrammarHandler::startsWith($msg_text, "/e_") && $isRegistered) {
+            // тут буду выдавать расшифрованные данные
+            $rawData = substr($msg_text, 3);
+            $handler = new RawDataHandler($rawData);
+            $answer = '';
+            if (!empty($handler->batteryLevel)) {
+                $answer .= "Уровень заряда батареи: {$handler->batteryLevel}%\n";
+            }
+            if (!empty($handler->activationType)) {
+                $answer .= "Тип активации: {$handler->activationType}\n";
+            }
+            if (!empty($handler->pingInterval)) {
+                $answer .= "Таймаут опроса: {$handler->pingInterval}\n";
+            }
+            if (!empty($handler->externalTemperature)) {
+                $answer .= "Внешняя температура: {$handler->externalTemperature}\n";
+            }
+            if (!empty($handler->indicationTime)) {
+                $answer .= "Данные собраны: " . GrammarHandler::timestampToDate($handler->indicationTime) . "\n";
+            }
+            if (!empty($handler->pin_1_type)) {
+                $answer .= "Тип входа 1: {$handler->pin_1_type}\n";
+            }
+            if (!empty($handler->pin_1_value)) {
+                $answer .= "Показания входа 1: {$handler->pin_1_value}\n";
+            }
+            if (!empty($handler->pin_2_type)) {
+                $answer .= "Тип входа 2: {$handler->pin_2_type}\n";
+            }
+            if (!empty($handler->pin_2_value)) {
+                $answer .= "Показания входа 2: {$handler->pin_2_value}\n";
+            }
+            if (!empty($handler->pin_3_type)) {
+                $answer .= "Тип входа 3: {$handler->pin_3_type}\n";
+            }
+            if (!empty($handler->pin_3_value)) {
+                $answer .= "Показания входа 3: {$handler->pin_3_value}\n";
+            }
+            if (!empty($handler->pin_4_type)) {
+                $answer .= "Тип входа 4: {$handler->pin_4_type}\n";
+            }
+            if (!empty($handler->pin_4_value)) {
+                $answer .= "Показания входа 4: {$handler->pin_4_value}\n";
+            }
+            return $answer;
         }
         return 'Не понимаю, о чём вы :( (вы написали ' . $msg_text . ')';
     }
@@ -239,6 +297,7 @@ DevEui считывателя: {$cottageInfo->reader_id}
     {
         self::$bot->sendMessage(self::$message->getChat()->getId(), $messageText);
     }
+
     private static function sendMessageToReceiver($receiver, $messageText): void
     {
         self::$bot->sendMessage($receiver, $messageText);
@@ -250,7 +309,7 @@ DevEui считывателя: {$cottageInfo->reader_id}
         self::$bot = new Client($token);
         /** @var Telegram_service_clients[] $subscribers */
         $subscribers = Telegram_service_clients::find()->all();
-        if(!empty($subscribers)){
+        if (!empty($subscribers)) {
             foreach ($subscribers as $item) {
                 self::sendMessageToReceiver($item->client_id, $message);
             }

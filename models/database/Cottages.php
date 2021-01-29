@@ -273,7 +273,7 @@ class Cottages extends ActiveRecord
             asort($counters);
             $result = '';
             foreach ($counters as $key=>$value) {
-                $result .= $key . ':  ' . TimeHandle::timestampToDate($value) . "\n";
+                $result .= '/d_' . $key . ':  ' . TimeHandle::timestampToDate($value) . "\n";
             }
         }
         return $result;
@@ -294,7 +294,7 @@ class Cottages extends ActiveRecord
             asort($counters);
             $result = '';
             foreach ($counters as $key=>$value) {
-                $result .= $key . ':  ' . TimeHandle::timestampToDate($value) . "\n";
+                $result .= '/d_' . $key . ':  ' . TimeHandle::timestampToDate($value) . "\n";
             }
         }
         return $result;

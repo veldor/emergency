@@ -11,7 +11,9 @@ use app\models\database\Cottages;
 use app\models\database\DefenceDevice;
 use app\models\database\DefenceStatusChangeRequest;
 use app\models\database\FirebaseDeviceBinding;
+use app\models\database\ReceivedData;
 use app\models\utils\AlertRawDataHandler;
+use app\models\utils\GrammarHandler;
 use app\models\utils\PingChecker;
 use app\models\utils\RawDataHandler;
 use app\models\utils\TimeHandle;
@@ -266,14 +268,22 @@ class Api
                     $parsedValues .= $num . ' ';
                     $registeredCottage = Cottages::get($num);
                     if ($registeredCottage !== null) {
+                        if(ReceivedData::notRegistered($registeredCottage->reader_id, $item['rawData'])){
+                            // сохраню полученные данные
+                            $data = new ReceivedData();
+                            $data->dev_eui = $registeredCottage->reader_id;
+                            $data->raw_data = $item['rawData'];
+                            $data->receiving_time = time();
+                            $data->save();
+                        }
                         // проверю заряд батареи и данные считывателя. Если заряд ниже 80%
                         // или переданные значения меньше старых- оповещу
                         if (!empty($newParsedInfo->batteryLevel) && $newParsedInfo->batteryLevel < 80) {
                             // оповещу
-                            TelegramService::notify("Участок{$registeredCottage->cottage_number}: заряд считывателя:{$newParsedInfo->batteryLevel}%");
+                            TelegramService::notify("Участок /c_{$registeredCottage->cottage_number}: заряд считывателя:{$newParsedInfo->batteryLevel}%");
                         }
                         if ($registeredCottage->current_counter_indication > (int)$item['currentData']) {
-                            TelegramService::notify("Участок{$registeredCottage->cottage_number}: Предыдущие показания({$registeredCottage->current_counter_indication}) больше новых{$item['currentData']}");
+                            TelegramService::notify("Участок /c_{$registeredCottage->cottage_number}: То, что насчитал счётчик в прошлый раз (" . GrammarHandler::handleCounterData($registeredCottage->current_counter_indication) . ") меньше того, что насчитал сейчас: " . GrammarHandler::handleCounterData($item['currentData']) . " (начальные показания: " . $registeredCottage->initial_value . ")");
                             return ['status' => 'success'];
                         }
                         try {
@@ -284,7 +294,7 @@ class Api
                                 return ['status' => 'success'];
                             }
                             $spend = time() - Cottages::SPEND;
-                            if($registeredCottage->data_receive_time < $spend){
+                            if ($registeredCottage->data_receive_time < $spend) {
                                 TelegramService::notify("Участок /c_{$registeredCottage->cottage_number} (/d_{$registeredCottage->reader_id}) снова в сети(до этого был " . TimeHandle::timestampToDate($registeredCottage->data_receive_time) . ")");
 
                             }
@@ -365,7 +375,7 @@ class Api
             $devEui = $data['devEui'];
             $rawData = $data['rawData'];
             self::handleAlert($rawData, $devEui);
-            return ['status' => 'success', 'message' => 'alert successful handled'];
+            return ['status' => 'success', 'message' => 'alert successful handled ' . $devEui];
         }
         return ['status' => 'failed', 'message' => 'can\'t find specified message'];
     }
