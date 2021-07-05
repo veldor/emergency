@@ -12,9 +12,6 @@ use nirvana\showloading\ShowLoadingAsset;
 IndexAsset::register($this);
 ShowLoadingAsset::register($this);
 
-echo Cottages::getCountersInfo();
-die;
-
 $this->title = 'Теперь это наш сервер :)';
 
 ?>
@@ -22,6 +19,7 @@ $this->title = 'Теперь это наш сервер :)';
     <?php
     if(Yii::$app->user->isGuest){
     ?>
+        <h1 class="text-center">Hello</h1>
     <?php
         }
     else{

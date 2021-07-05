@@ -10,6 +10,7 @@ use app\models\database\Cottages;
 use app\models\database\DefenceDevice;
 use app\models\database\DefenceStatusChangeRequest;
 use app\models\database\Telegram_clients;
+use app\models\utils\FirebaseHandler;
 use app\models\utils\GrammarHandler;
 use app\priv\Info;
 use Exception;
@@ -317,4 +318,5 @@ class Telegram
     {
         return new ReplyKeyboardMarkup(array(array("/disable", "/status")), true);
     }
+
 }

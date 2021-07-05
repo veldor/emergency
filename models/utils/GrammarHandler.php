@@ -5,14 +5,17 @@ namespace app\models\utils;
 
 
 use DateTime;
+use Exception;
 
 class GrammarHandler
 {
     public static array $months = ['Января', 'Февраля', 'Марта', 'Апреля', 'Мая', 'Июня', 'Июля', 'Августа', 'Сентября', 'Октября', 'Ноября', 'Декабря',];
+
     public static function startsWith($haystack, $needle): bool
     {
         return stripos(mb_strtolower($haystack, 'UTF-8'), mb_strtolower($needle, 'UTF-8')) === 0;
     }
+
     /**
      * @param $string
      * @return array|string
@@ -47,13 +50,13 @@ class GrammarHandler
     public static function dayTimeGreetings(): string
     {
         $hour = date('H');
-        if($hour < 7){
+        if ($hour < 7) {
             return "Доброй ночи";
         }
-        if($hour < 12){
+        if ($hour < 12) {
             return "Доброе утро";
         }
-        if($hour < 20){
+        if ($hour < 20) {
             return "Добрый день";
         }
         return "Добрый вечер";
@@ -61,14 +64,15 @@ class GrammarHandler
 
     public static function convertTemperature(int $external_temperature): ?string
     {
-        if($external_temperature > 127){
+        if ($external_temperature > 127) {
             return '<b class="text-info">-' . (256 - $external_temperature) . "С<sup>0</sup></b>";
         }
         return '<b class="text-success">' . $external_temperature . "С<sup>0</sup></b>";
     }
+
     public static function simpleConvertTemperature(int $external_temperature): ?string
     {
-        if($external_temperature > 127){
+        if ($external_temperature > 127) {
             return '-' . (256 - $external_temperature) . " гр.";
         }
         return $external_temperature . " гр.";
@@ -90,6 +94,32 @@ class GrammarHandler
 
     public static function handleCounterData(int $current_counter_indication): string
     {
-        return round($current_counter_indication / 10,1). ' кВт⋅ч';
+        return round($current_counter_indication / 10, 1) . ' кВт⋅ч';
+    }
+
+    public static function convertCounterData($data): float
+    {
+        return round((float)$data / 10, 1);
+    }
+
+    public static function roundData($data): float
+    {
+        return round($data, 1);
+    }
+
+    public static function normalizeNumber($num): int
+    {
+
+        $re = '/^\s*(\d+)[,.]?(\d*)?\s*$/';
+        $match = null;
+        if (preg_match($re, $num, $match)) {
+            return round((double)"$match[1].$match[2]", 2) * 100;
+        }
+        throw new Exception("Wrong number");
+    }
+
+    public static function convertToUTF(string $string)
+    {
+        return iconv('windows-1251', 'utf-8', $string);
     }
 }

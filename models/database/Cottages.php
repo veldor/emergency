@@ -133,6 +133,15 @@ class Cottages extends ActiveRecord
         }
     }
 
+    public static function changeInitialValue($cottageNumber, $newInitialValue): void
+    {
+        $cottage = self::findOne(['cottage_number' => $cottageNumber]);
+        if ($cottage !== null) {
+            $cottage->initial_value = str_replace(',', '.', $newInitialValue);
+            $cottage->save();
+        }
+    }
+
     /**
      * Проверка на присуствие участка в базе
      * @param string $cottage_number
@@ -263,16 +272,16 @@ class Cottages extends ActiveRecord
         $result = 'no data';
         $cottages = self::find()->all();
         $counters = [];
-        if(!empty($cottages)){
+        if (!empty($cottages)) {
             /** @var Cottages $cottage */
             foreach ($cottages as $cottage) {
                 $counters[$cottage->reader_id] = $cottage->data_receive_time;
             }
         }
-        if(!empty($counters)){
+        if (!empty($counters)) {
             asort($counters);
             $result = '';
-            foreach ($counters as $key=>$value) {
+            foreach ($counters as $key => $value) {
                 $result .= $key . ':  ' . TimeHandle::timestampToDate($value) . "\n";
             }
         }
@@ -284,16 +293,16 @@ class Cottages extends ActiveRecord
         $result = 'no data';
         $cottages = self::find()->all();
         $counters = [];
-        if(!empty($cottages)){
+        if (!empty($cottages)) {
             /** @var Cottages $cottage */
             foreach ($cottages as $cottage) {
                 $counters[$cottage->reader_id] = $cottage->last_indication_time;
             }
         }
-        if(!empty($counters)){
+        if (!empty($counters)) {
             asort($counters);
             $result = '';
-            foreach ($counters as $key=>$value) {
+            foreach ($counters as $key => $value) {
                 $result .= $key . ':  ' . TimeHandle::timestampToDate($value) . "\n";
             }
         }
